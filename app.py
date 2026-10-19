@@ -137,21 +137,22 @@ if user_prompt and not st.session_state.is_processing:
     st.rerun()  # Instantly locks input box and refreshes UI before processing
 
 # EXECUTION BLOCK (Runs safely while input is locked)
+# EXECUTION BLOCK in app.py
 if st.session_state.pending_prompt:
     current_prompt = st.session_state.pending_prompt
     st.session_state.pending_prompt = None  # Clear pending prompt
 
-    # 1. Display user message
+    # 1. Append user message to history first so Gemini sees it
     st.session_state.messages.append({"role": "user", "content": current_prompt})
     with st.chat_message("user"):
         st.markdown(current_prompt)
 
-    # 2. Generate & Display Assistant Response
+    # 2. Generate & Display Assistant Response (Passing full message history)
     with st.chat_message("assistant"):
         with st.spinner("Searching store database and policies..."):
             try:
                 response_text = process_user_message(
-                    user_message=current_prompt,
+                    messages=st.session_state.messages,
                     user_id=st.session_state.current_user_id
                 )
             except Exception as e:
@@ -160,6 +161,6 @@ if st.session_state.pending_prompt:
             st.markdown(response_text)
             st.session_state.messages.append({"role": "assistant", "content": response_text})
     
-    # 3. Unlock the system and refresh UI
+    # 3. Unlock system and refresh UI
     st.session_state.is_processing = False
     st.rerun()

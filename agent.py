@@ -9,63 +9,79 @@ from dotenv import load_dotenv
 import mock_db
 import rag_engine
 
-# Load environment variables
 load_dotenv()
 api_key = os.getenv("GEMINI_API_KEY")
 
 if not api_key:
-    raise ValueError("GEMINI_API_KEY not found in environment variables or Streamlit secrets.")
+    raise ValueError("GEMINI_API_KEY not found.")
 
 client = genai.Client(api_key=api_key)
 
-# Define System Instructions & Guardrails
 SYSTEM_INSTRUCTION = """
-You are the official E-Commerce Customer Support AI Concierge for our online store.
-Your goal is to assist customers politely, accurately, and efficiently.
+You are the official E-Commerce Customer Support AI Concierge.
+You assist customers with order tracking, support tickets, product searches, and return policies.
 
-CAPABILITIES & TOOLS:
-1. Order Tracking: Use `get_order_details` to look up tracking status, delivery dates, and courier details.
-2. Support Tickets: Use `raise_support_ticket` when a customer reports damaged items, missing packages, or refund requests.
-3. Ticket Status: Use `get_ticket_status` to check the progress of an existing support ticket.
-4. Product Search: Use `search_products` to check item availability, pricing, and specs in our catalog.
-5. Store Knowledge: Use `search_knowledge_base` to answer store questions about returns, refunds, cancellations, warranties, and payments.
-
-STRICT GUARDRAILS:
-- Do NOT answer general world trivia, math problems, or off-topic queries outside e-commerce support.
-- If a user asks about returns, warranties, or shipping timelines, ALWAYS query the knowledge base first.
-- If a user wants to check an order status or raise a ticket, ask for their Order ID (e.g., ORD1001) if they haven't provided it.
-- Keep responses professional, clear, and customer-friendly.
+CRITICAL BEHAVIOR:
+- Maintain full conversational memory. If the user previously mentioned an Order ID (like ORD1001), remember it across subsequent turns.
+- Customers can ONLY look up their own orders and tickets. 
+- If a user asks about returns, warranties, or shipping timelines, query the knowledge base first using `search_knowledge_base`.
 """
 
 def search_knowledge_base(query: str) -> str:
-    """Searches store policies (returns, warranties, shipping) using ChromaDB RAG."""
+    """Searches store policies using ChromaDB RAG."""
     try:
         results = rag_engine.query_rag(query)
-        return results if results else "No specific policy document found for this query."
+        return results if results else "No specific policy document found."
     except Exception as e:
-        return f"Error retrieving policy information: {str(e)}"
+        return f"Error: {str(e)}"
 
-# Register all available tools for Gemini function calling
-AVAILABLE_TOOLS = [
-    mock_db.get_order_details,
-    mock_db.raise_support_ticket,
-    mock_db.get_ticket_status,
-    mock_db.search_products,
-    search_knowledge_base
-]
-
-def process_user_message(user_message: str, user_id: str) -> str:
-    """Sends user message to Gemini with tool definitions and handles automatic tool execution."""
+def process_user_message(messages: list, user_id: str) -> str:
+    """Processes the full conversation history, maintaining memory and secure tool bindings."""
     
-    # Prepend context on active user if helpful for tools
-    contextualized_prompt = f"[Active Customer ID: {user_id}]\nUser Query: {user_message}"
+    # Define secure tool wrappers capturing the current user_id
+    def secure_get_order_details(order_id: str):
+        """Retrieves tracking status for an order ID belonging to the current user."""
+        return mock_db.get_order_details(order_id=order_id, user_id=user_id)
+
+    def secure_raise_support_ticket(order_id: str, issue_description: str):
+        """Raises a support ticket for an order belonging to the current user."""
+        return mock_db.raise_support_ticket(user_id=user_id, order_id=order_id, issue_description=issue_description)
+
+    def secure_get_ticket_status(ticket_id: str):
+        """Checks status of a support ticket belonging to the current user."""
+        return mock_db.get_ticket_status(ticket_id=ticket_id, user_id=user_id)
+
+    tools_list = [
+        secure_get_order_details,
+        secure_raise_support_ticket,
+        secure_get_ticket_status,
+        mock_db.search_products,
+        search_knowledge_base
+    ]
+
+    # Format Streamlit message history into Gemini's expected role/parts structure
+    formatted_contents = []
+    
+    # Prepend active customer context into the system instruction or first prompt context
+    for i, msg in enumerate(messages):
+        role = "user" if msg["role"] == "user" else "model"
+        text = msg["content"]
+        
+        # If it's the very first user message, tag the active customer ID for background context
+        if i == 0 and role == "user":
+            text = f"[Active Customer ID: {user_id}]\n{text}"
+            
+        formatted_contents.append({
+            "role": role,
+            "parts": [{"text": text}]
+        })
 
     response = client.models.generate_content(
-        model='gemini-3.5-flash-lite', 
-        contents=contextualized_prompt,
+        model='gemini-3.5-flash-lite',
+        contents=formatted_contents,
         config=types.GenerateContentConfig(
             system_instruction=SYSTEM_INSTRUCTION,
-            tools=AVAILABLE_TOOLS,
+            tools=tools_list,
             temperature=0.3,
         )
     )
