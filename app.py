@@ -30,6 +30,10 @@ st.markdown("""
 # ---------------------------------------------------------------------------
 if "is_processing" not in st.session_state:
     st.session_state.is_processing = False
+
+if "pending_prompt" not in st.session_state:
+    st.session_state.pending_prompt = None
+
 if "messages" not in st.session_state:
     st.session_state.messages = [
         {
@@ -109,39 +113,45 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# Handle Quick Prompt Input from Sidebar Buttons
 # ---------------------------------------------------------------------------
 # MAIN CHAT INPUT & PROCESSING LOGIC
 # ---------------------------------------------------------------------------
+# Check for quick prompt trigger from sidebar
+if "prompt_input" in st.session_state and st.session_state.prompt_input:
+    if not st.session_state.is_processing:
+        st.session_state.pending_prompt = st.session_state.prompt_input
+        st.session_state.prompt_input = None
+        st.session_state.is_processing = True
+        st.rerun()
 
-# Chat input is disabled while the previous response is generating
+# Chat input is disabled while is_processing is True
 user_prompt = st.chat_input(
     "Type your question here (e.g., 'Track order ORD1001')...", 
     disabled=st.session_state.is_processing
 )
 
-# Check for quick prompt trigger from sidebar
-if "prompt_input" in st.session_state and st.session_state.prompt_input:
-    if not st.session_state.is_processing:
-        user_prompt = st.session_state.prompt_input
-        st.session_state.prompt_input = None
-
-# Process User Input if received and not already processing
+# If user typed something and hit enter
 if user_prompt and not st.session_state.is_processing:
-    # Lock the system
+    st.session_state.pending_prompt = user_prompt
     st.session_state.is_processing = True
+    st.rerun()  # Instantly locks input box and refreshes UI before processing
 
-    # Append & display user message
-    st.session_state.messages.append({"role": "user", "content": user_prompt})
+# EXECUTION BLOCK (Runs safely while input is locked)
+if st.session_state.pending_prompt:
+    current_prompt = st.session_state.pending_prompt
+    st.session_state.pending_prompt = None  # Clear pending prompt
+
+    # 1. Display user message
+    st.session_state.messages.append({"role": "user", "content": current_prompt})
     with st.chat_message("user"):
-        st.markdown(user_prompt)
+        st.markdown(current_prompt)
 
-    # Generate & Display Assistant Response
+    # 2. Generate & Display Assistant Response
     with st.chat_message("assistant"):
         with st.spinner("Searching store database and policies..."):
             try:
                 response_text = process_user_message(
-                    user_message=user_prompt,
+                    user_message=current_prompt,
                     user_id=st.session_state.current_user_id
                 )
             except Exception as e:
@@ -150,6 +160,6 @@ if user_prompt and not st.session_state.is_processing:
             st.markdown(response_text)
             st.session_state.messages.append({"role": "assistant", "content": response_text})
     
-    # Unlock the system and rerun to refresh the input box state
+    # 3. Unlock the system and refresh UI
     st.session_state.is_processing = False
     st.rerun()
