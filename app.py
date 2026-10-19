@@ -25,6 +25,11 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Session State Initialization
+# ---------------------------------------------------------------------------
+# INITIALIZE PROCESSING STATE
+# ---------------------------------------------------------------------------
+if "is_processing" not in st.session_state:
+    st.session_state.is_processing = False
 if "messages" not in st.session_state:
     st.session_state.messages = [
         {
@@ -69,22 +74,22 @@ with st.sidebar:
 
     st.divider()
 
-    # Sample Quick Prompts Macro Buttons
+# Sample Quick Prompts Macro Buttons (Disabled while processing)
     st.subheader("🚀 Quick Test Prompts")
     
-    if st.button("📦 Track Order ORD1001"):
+    if st.button("📦 Track Order ORD1001", disabled=st.session_state.is_processing):
         st.session_state.prompt_input = "Can you give me the latest tracking status for my order ORD1001?"
         
-    if st.button("⚠️ Damaged Item / Ticket"):
+    if st.button("⚠️ Damaged Item / Ticket", disabled=st.session_state.is_processing):
         st.session_state.prompt_input = "I received order ORD1002 with a damaged box. Please raise a ticket."
 
-    if st.button("🔄 Return Policy Query"):
+    if st.button("🔄 Return Policy Query", disabled=st.session_state.is_processing):
         st.session_state.prompt_input = "What is your return policy for electronics and how many days do I have?"
 
-    if st.button("🔍 Search Headphones"):
+    if st.button("🔍 Search Headphones", disabled=st.session_state.is_processing):
         st.session_state.prompt_input = "Do you have any wireless noise-cancelling headphones in stock under ₹5000?"
 
-    if st.button("🗑️ Clear Chat History"):
+    if st.button("🗑️ Clear Chat History", disabled=st.session_state.is_processing):
         st.session_state.messages = [
             {
                 "role": "assistant",
@@ -105,14 +110,28 @@ for message in st.session_state.messages:
         st.markdown(message["content"])
 
 # Handle Quick Prompt Input from Sidebar Buttons
-user_prompt = st.chat_input("Type your question here (e.g., 'Track order ORD1001')...")
-if "prompt_input" in st.session_state and st.session_state.prompt_input:
-    user_prompt = st.session_state.prompt_input
-    st.session_state.prompt_input = None  # Reset trigger
+# ---------------------------------------------------------------------------
+# MAIN CHAT INPUT & PROCESSING LOGIC
+# ---------------------------------------------------------------------------
 
-# Process User Input
-if user_prompt:
-    # Display User Message
+# Chat input is disabled while the previous response is generating
+user_prompt = st.chat_input(
+    "Type your question here (e.g., 'Track order ORD1001')...", 
+    disabled=st.session_state.is_processing
+)
+
+# Check for quick prompt trigger from sidebar
+if "prompt_input" in st.session_state and st.session_state.prompt_input:
+    if not st.session_state.is_processing:
+        user_prompt = st.session_state.prompt_input
+        st.session_state.prompt_input = None
+
+# Process User Input if received and not already processing
+if user_prompt and not st.session_state.is_processing:
+    # Lock the system
+    st.session_state.is_processing = True
+
+    # Append & display user message
     st.session_state.messages.append({"role": "user", "content": user_prompt})
     with st.chat_message("user"):
         st.markdown(user_prompt)
@@ -130,3 +149,7 @@ if user_prompt:
             
             st.markdown(response_text)
             st.session_state.messages.append({"role": "assistant", "content": response_text})
+    
+    # Unlock the system and rerun to refresh the input box state
+    st.session_state.is_processing = False
+    st.rerun()
