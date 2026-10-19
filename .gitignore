@@ -1,0 +1,15 @@
+.venv/
+env/
+venv/
+.env
+*.env
+chroma_db/
+.chroma/
+__pycache__/
+*.pyc
+.DS_Store
+.venv/
+.env
+chroma_db/
+__pycache__/
+*.pyc

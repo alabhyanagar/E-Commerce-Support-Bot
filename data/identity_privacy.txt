@@ -1,0 +1,13 @@
+HelloQ Privacy & Identity Support Guide
+
+[Discreet Mode & App Icon Masking]
+- What is Discreet Mode? Discreet Mode hides active chat badges, masks push notifications with neutral text (e.g., "New message received"), and allows users to change the home screen app icon to a calculator or productivity tool look.
+- How to enable: Go to Settings > Privacy & Safety > Discreet Mode > Toggle "Enable Discreet Mode". Select your preferred decoy icon from the drop-down menu.
+
+[Inclusive Pronoun Customization & Gender Identity]
+- HelloQ supports over 30 customizable gender identities and pronouns (including She/Her, He/Him, They/Them, Neopronouns, and custom entries).
+- How to update: Navigate to Profile > Edit Profile > Pronouns. You can select up to 3 pronouns to display publicly on your profile card or choose "Ask Me".
+
+[Location Obfuscation & Ghosting Protection]
+- Users can choose precise distance hiding or set a custom location radius (from 1 mile to 50 miles) so their exact coordinate is never exposed.
+- To enable Ghost Mode (Premium feature): Go to Settings > Discovery > Hide My Distance.

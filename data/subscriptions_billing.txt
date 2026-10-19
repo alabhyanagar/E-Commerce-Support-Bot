@@ -1,0 +1,9 @@
+HelloQ Subscriptions, Billing & Perks Guide
+
+[HelloQ Gold & Premium Tiers]
+- HelloQ Gold includes: Unlimited Likes, Rewind last swipe, 5 free Super Likes per day, Passport mode (change location globally), and See Who Liked You.
+- HelloQ Platinum includes all Gold features + Priority Likes (messages appear first in your match's queue) and seeing message read receipts.
+
+[Super Likes & Perk Management]
+- Super Likes refresh every 24 hours at 00:00 UTC. If your daily Super Likes did not credit properly after a renewal or purchase, you can use the automated account restore tool via support.
+- How to restore purchases: Go to Settings > Account > Restore Purchases, or ask the support assistant to trigger an automatic account sync and perk refresh.
