@@ -1,6 +1,6 @@
 """
 mock_db.py - E-Commerce Mock Database & Helper Tools
-Simulates backend order management, support ticketing, and inventory catalog.
+Includes strict user-isolation security checks to prevent cross-account data leaks.
 """
 
 # ---------------------------------------------------------------------------
@@ -91,25 +91,43 @@ MOCK_PRODUCTS = [
 ]
 
 # ---------------------------------------------------------------------------
-# FUNCTION TOOLS (Called by Agent / UI)
+# SECURE FUNCTION TOOLS (Validated against user_id)
 # ---------------------------------------------------------------------------
 
-def get_order_details(order_id: str) -> dict:
-    """Retrieves live order status, tracking, and delivery details by Order ID."""
+def get_order_details(order_id: str, user_id: str) -> dict:
+    """Retrieves live order details ONLY if the order belongs to the requesting user."""
     clean_id = order_id.strip().upper()
     if clean_id in MOCK_ORDERS:
-        return {"success": True, "order_info": MOCK_ORDERS[clean_id]}
+        order = MOCK_ORDERS[clean_id]
+        # Security Check: Ensure order owner matches active user
+        if order["user_id"] == user_id:
+            return {"success": True, "order_info": order}
+        else:
+            return {
+                "success": False,
+                "message": "Access Denied: This order ID does not belong to your account."
+            }
     return {
         "success": False,
-        "message": f"Order ID '{order_id}' was not found. Please double-check your order number."
+        "message": f"Order ID '{order_id}' was not found in your account records."
     }
 
 
 def raise_support_ticket(user_id: str, order_id: str, issue_description: str) -> dict:
-    """Creates a formal customer support ticket for damaged goods, returns, or refunds."""
+    """Creates a support ticket ensuring the user owns the target order first."""
     clean_order_id = order_id.strip().upper()
-    ticket_id = f"TCK{len(MOCK_TICKETS) + 501}"
     
+    # Verify order ownership before allowing a ticket to be raised
+    if clean_order_id in MOCK_ORDERS:
+        if MOCK_ORDERS[clean_order_id]["user_id"] != user_id:
+            return {
+                "success": False,
+                "message": "Access Denied: You cannot raise a ticket for an order that belongs to another customer."
+            }
+    else:
+        return {"success": False, "message": f"Order ID '{order_id}' not found."}
+
+    ticket_id = f"TCK{len(MOCK_TICKETS) + 501}"
     new_ticket = {
         "user_id": user_id,
         "order_id": clean_order_id,
@@ -127,19 +145,20 @@ def raise_support_ticket(user_id: str, order_id: str, issue_description: str) ->
     }
 
 
-def get_ticket_status(ticket_id: str) -> dict:
-    """Retrieves current status and updates for a specific support ticket ID."""
+def get_ticket_status(ticket_id: str, user_id: str) -> dict:
+    """Retrieves ticket status only if it belongs to the requesting user."""
     clean_id = ticket_id.strip().upper()
     if clean_id in MOCK_TICKETS:
-        return {"success": True, "ticket_info": MOCK_TICKETS[clean_id]}
-    return {
-        "success": False,
-        "message": f"Ticket ID '{ticket_id}' not found in our records."
-    }
+        ticket = MOCK_TICKETS[clean_id]
+        if ticket["user_id"] == user_id:
+            return {"success": True, "ticket_info": ticket}
+        else:
+            return {"success": False, "message": "Access Denied: This support ticket belongs to another account."}
+    return {"success": False, "message": f"Ticket ID '{ticket_id}' not found."}
 
 
 def search_products(query: str) -> dict:
-    """Searches the product catalog by name, category, or keyword."""
+    """Searches the public product catalog (Publicly accessible to all users)."""
     q_lower = query.lower().strip()
     results = [
         p for p in MOCK_PRODUCTS 
