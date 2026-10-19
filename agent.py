@@ -61,7 +61,7 @@ def process_user_message(user_message: str, user_id: str) -> str:
     contextualized_prompt = f"[Active Customer ID: {user_id}]\nUser Query: {user_message}"
 
     response = client.models.generate_content(
-        model='gemini-2.5-flash',  # or gemini-2.5-pro
+        model='gemini-3.8-flash', 
         contents=contextualized_prompt,
         config=types.GenerateContentConfig(
             system_instruction=SYSTEM_INSTRUCTION,
