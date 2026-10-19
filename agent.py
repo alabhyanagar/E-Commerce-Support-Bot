@@ -1,68 +1,73 @@
-# agent.py - Gemini Agent with Native RAG and Tool Calling for HelloQ
-from streamlit.proto import SelectWidgetFilterMode_pb2
+"""
+agent.py - Gemini Agent & Tool Execution for E-Commerce Support Bot
+"""
+
 import os
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
+import mock_db
+import rag_engine
 
-from rag_engine import HelloQRAGEngine
-from mock_db import get_user_account, trigger_restore_purchases
-
+# Load environment variables
 load_dotenv()
+api_key = os.getenv("GEMINI_API_KEY")
 
-# Initialize global RAG engine for tool access
-_rag_engine = HelloQRAGEngine()
-_rag_engine.ingest_documents()
+if not api_key:
+    raise ValueError("GEMINI_API_KEY not found in environment variables or Streamlit secrets.")
 
-def search_knowledge_base(query: str) -> list[str]:
-    """Searches the HelloQ support policy knowledge base for features, billing, and privacy guidelines."""
-    return _rag_engine.search(query, n_results=2)
+client = genai.Client(api_key=api_key)
 
-class HelloQSupportAgent:
-    def __init__(self):
-        self.client = genai.Client()
-        # Define available tools for Gemini native function calling (standalone functions)
-        self.tools = [
-            get_user_account,
-            trigger_restore_purchases,
-            search_knowledge_base
-        ]
+# Define System Instructions & Guardrails
+SYSTEM_INSTRUCTION = """
+You are the official E-Commerce Customer Support AI Concierge for our online store.
+Your goal is to assist customers politely, accurately, and efficiently.
 
-    def chat(self, user_message: str, user_id: str = "user_101") -> str:
-        """Processes the user query using Gemini 3.5 Flash with automatic tool execution."""
+CAPABILITIES & TOOLS:
+1. Order Tracking: Use `get_order_details` to look up tracking status, delivery dates, and courier details.
+2. Support Tickets: Use `raise_support_ticket` when a customer reports damaged items, missing packages, or refund requests.
+3. Ticket Status: Use `get_ticket_status` to check the progress of an existing support ticket.
+4. Product Search: Use `search_products` to check item availability, pricing, and specs in our catalog.
+5. Store Knowledge: Use `search_knowledge_base` to answer store questions about returns, refunds, cancellations, warranties, and payments.
 
-        system_instruction = """
-        You are the official E-Commerce Customer Support AI Concierge.
-        You assist users with:
-        1. Tracking order statuses and delivery dates using `get_order_details`.
-        2. Raising support tickets for damaged/missing items or refund requests using `raise_support_ticket`.
-        3. Finding items in our product catalog using `search_catalog`.
-        4. Answering store policies (returns, warranties, cancellations) using `search_knowledge_base`.
+STRICT GUARDRAILS:
+- Do NOT answer general world trivia, math problems, or off-topic queries outside e-commerce support.
+- If a user asks about returns, warranties, or shipping timelines, ALWAYS query the knowledge base first.
+- If a user wants to check an order status or raise a ticket, ask for their Order ID (e.g., ORD1001) if they haven't provided it.
+- Keep responses professional, clear, and customer-friendly.
+"""
 
-        CRITICAL GUARDRAILS:
-        - Do NOT answer general world trivia or off-topic questions outside of our store's scope.
-        - Always ask for an Order ID if the user wants to check delivery or request a refund for a specific purchase.
-        """
+def search_knowledge_base(query: str) -> str:
+    """Searches store policies (returns, warranties, shipping) using ChromaDB RAG."""
+    try:
+        results = rag_engine.query_rag(query)
+        return results if results else "No specific policy document found for this query."
+    except Exception as e:
+        return f"Error retrieving policy information: {str(e)}"
 
-        response = self.client.models.generate_content(
-            model='gemini-3.5-flash-lite',
-            contents=f"User ID {user_id}: {user_message}",
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                tools=self.tools,
-                temperature=0.3,
-            ),
-        )
-        
-        return response.text
+# Register all available tools for Gemini function calling
+AVAILABLE_TOOLS = [
+    mock_db.get_order_details,
+    mock_db.raise_support_ticket,
+    mock_db.get_ticket_status,
+    mock_db.search_products,
+    search_knowledge_base
+]
 
-if __name__ == "__main__":
-    agent = HelloQSupportAgent()
+def process_user_message(user_message: str, user_id: str) -> str:
+    """Sends user message to Gemini with tool definitions and handles automatic tool execution."""
     
-    print("\n--- Testing Agent Tool & RAG Call 1: Account Perk Restoration ---")
-    response1 = agent.chat("My Super Likes didn't refresh today after my subscription renewed. Can you fix this?", user_id="user_101")
-    print(response1)
+    # Prepend context on active user if helpful for tools
+    contextualized_prompt = f"[Active Customer ID: {user_id}]\nUser Query: {user_message}"
 
-    print("\n--- Testing Agent RAG Call 2: Discreet Mode ---")
-    response2 = agent.chat("How do I enable Discreet Mode and mask my app icon?", user_id="user_101")
-    print(response2)
+    response = client.models.generate_content(
+        model='gemini-2.5-flash',  # or gemini-2.5-pro
+        contents=contextualized_prompt,
+        config=types.GenerateContentConfig(
+            system_instruction=SYSTEM_INSTRUCTION,
+            tools=AVAILABLE_TOOLS,
+            temperature=0.3,
+        )
+    )
+    
+    return response.text
