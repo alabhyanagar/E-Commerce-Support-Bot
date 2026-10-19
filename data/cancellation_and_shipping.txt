@@ -1,0 +1,17 @@
+STORE POLICY: SHIPPING, DELIVERY & CANCELLATIONS
+
+1. Order Tracking & Statuses:
+- Placed: Order confirmed and passed to the seller.
+- Processing: Packed and ready for courier pickup.
+- In Transit: Handed over to courier partners (e.g., Ekart, Delhivery, BlueDart) with an active tracking link.
+- Out for Delivery: Courier agent is delivering the parcel today before 8:00 PM.
+
+2. Order Cancellation Rules:
+- Customers can cancel an order anytime before it changes to "Out for Delivery" status.
+- Once an order is marked as "Out for Delivery", it cannot be cancelled online. The user must refuse delivery when the delivery partner arrives.
+- If an order is cancelled prior to shipping, pre-paid amounts are refunded instantly to the original payment method.
+
+3. Delivery Fees & Expedited Shipping:
+- Standard Delivery is FREE on orders above ₹499.
+- A flat shipping fee of ₹40 applies to orders under ₹499.
+- Express 1-Day Delivery is available for select pincodes at ₹99 extra.

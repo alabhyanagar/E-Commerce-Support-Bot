@@ -1,4 +1,5 @@
 # agent.py - Gemini Agent with Native RAG and Tool Calling for HelloQ
+from streamlit.proto import SelectWidgetFilterMode_pb2
 import os
 from google import genai
 from google.genai import types
@@ -29,17 +30,18 @@ class HelloQSupportAgent:
 
     def chat(self, user_message: str, user_id: str = "user_101") -> str:
         """Processes the user query using Gemini 3.5 Flash with automatic tool execution."""
-        
-        system_instruction = f"""
-        You are HelloQ's official AI Support Assistant.
-        You ONLY answer questions related to HelloQ platform features, privacy settings, subscriptions, account billing, and LGBTQIA+ community guidelines.
 
-        CRITICAL GUARDRAIL RULES:
-        1. If a user asks a question unrelated to HelloQ (e.g., general knowledge, trivia, coding help, weather, or non-HelloQ topics), DECLINE politely.
-        2. Example refusal response: "I'm sorry, but I am specifically trained to assist only with HelloQ platform support, features, and account questions."
-        3. ALWAYS check `search_knowledge_base` for policy details before answering feature questions.
+        system_instruction = """
+        You are the official E-Commerce Customer Support AI Concierge.
+        You assist users with:
+        1. Tracking order statuses and delivery dates using `get_order_details`.
+        2. Raising support tickets for damaged/missing items or refund requests using `raise_support_ticket`.
+        3. Finding items in our product catalog using `search_catalog`.
+        4. Answering store policies (returns, warranties, cancellations) using `search_knowledge_base`.
 
-        Current active user ID for this session: {user_id}
+        CRITICAL GUARDRAILS:
+        - Do NOT answer general world trivia or off-topic questions outside of our store's scope.
+        - Always ask for an Order ID if the user wants to check delivery or request a refund for a specific purchase.
         """
 
         response = self.client.models.generate_content(

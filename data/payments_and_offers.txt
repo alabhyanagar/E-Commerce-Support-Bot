@@ -1,0 +1,13 @@
+STORE POLICY: PAYMENTS, OFFERS & INVOICING
+
+1. Payment Methods Accepted:
+- Credit/Debit Cards (Visa, MasterCard, RuPay), Net Banking across all major banks, UPI (Google Pay, PhonePe, Paytm), and Cash on Delivery (COD).
+- EMI options are available on major credit cards for purchases exceeding ₹3,000.
+
+2. Coupon & Promo Codes:
+- Only one promo code or bank discount can be applied per order.
+- Instant bank discounts (e.g., 10% Instant Discount on HDFC/ICICI cards) are applied automatically at checkout if eligible.
+
+3. Tax & Invoices:
+- GST invoices are generated automatically for all purchases.
+- Business buyers requiring GSTIN billing must input their tax identification details during checkout prior to placing the order.
